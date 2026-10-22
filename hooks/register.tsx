@@ -127,7 +127,6 @@ export const register: Register = on => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     const snap = await read($, snapshot)
-    const now = await $.clock.now()
     const agents = snap.agents
 
     // Root label: the captured session title, else the working-directory name,
@@ -192,15 +191,12 @@ export const register: Register = on => {
     // the viewport. The status bar is 3 rows (rule + updated + legend); the header
     // and session root are 2 more; the rest is room for agent rows.
     const bodyRows = e.props?.scroll?.bodyRows ?? e.viewport?.rows ?? 24
-    // Status bar is 3 rows (rule + updated + legend); session root + count line
-    // are 2 more.
-    const room = Math.max(1, bodyRows - 5)
+    // Status bar is 2 rows (rule + legend); session root + count line are 2 more.
+    const room = Math.max(1, bodyRows - 4)
     // Rule spans the full pane body width (bodyColumns), adjusting as it resizes.
     const ruleWidth = Math.max(10, e.props?.bodyColumns ?? e.viewport?.columns ?? 28)
     const shown = ordered.slice(0, room)
     const hidden = ordered.length - shown.length
-
-    const ageSec = snap.refreshedAt ? Math.max(0, Math.round((now - snap.refreshedAt) / 1000)) : 0
 
     const label = (a: AgentRow) => {
       const head = a.name ?? a.teammateId ?? a.type
@@ -259,7 +255,6 @@ export const register: Register = on => {
         {/* Status bar pinned to the bottom edge of the pane. */}
         <Box flexDirection="column">
           <Text dimColor>{'─'.repeat(ruleWidth)}</Text>
-          <Text dimColor>{`updated ${ageSec}s ago · /${COMMAND} to reopen`}</Text>
           <Text dimColor>{'● 실행  ◐ 대기  ○ 유휴  ✓ 완료  ✗ 종료'}</Text>
         </Box>
       </Box>
