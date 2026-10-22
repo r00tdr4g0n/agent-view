@@ -58,18 +58,33 @@ const ROSTER_CAP = 300
 // instead: remembered agents are kept with their last-known status, and live
 // ones upsert in place, so the roster only grows (up to ROSTER_CAP) within a
 // session and finished agents stay visible.
+// A one-line summary for the status line under the prompt: a glyph and a count
+// per status group, so the roster is visible without opening the pane.
+function statusLineText(rows: readonly AgentRow[]): string {
+  const n = (f: (a: AgentRow) => boolean) => rows.filter(f).length
+  const run = n(a => a.status === 'running')
+  const wait = n(a => a.status === 'pending' || a.status === 'waiting')
+  const idle = n(a => a.status === 'idle')
+  const done = n(a => a.status === 'completed')
+  const gone = n(a => a.status === 'failed' || a.status === 'killed')
+  return `agents  ${STATUS_META.running.glyph}${run}  ${STATUS_META.pending.glyph}${wait}  ${STATUS_META.idle.glyph}${idle}  ${STATUS_META.completed.glyph}${done}  ${STATUS_META.failed.glyph}${gone}`
+}
+
 async function refresh($: EngineInterface): Promise<void> {
   try {
     const live = await $.agent.list()
     const refreshedAt = await $.clock.now()
-    await update($, snapshot, prev => {
-      const byId = new Map(prev.agents.map(a => [a.id, a]))
-      for (const a of live) byId.set(a.id, toRow(a)) // upsert: update status, add new
-      // A Map keeps insertion order, so remembered agents hold their place and
-      // live-only ones are appended; keep the most recent ROSTER_CAP.
-      const merged = [...byId.values()].slice(-ROSTER_CAP)
-      return { agents: merged, refreshedAt }
-    })
+    // Compute the merged roster up front so the same value feeds the snapshot and
+    // the status line. Single-writer refresh, so read-then-write is safe here.
+    const prev = await read($, snapshot)
+    const byId = new Map(prev.agents.map(a => [a.id, a]))
+    for (const a of live) byId.set(a.id, toRow(a)) // upsert: update status, add new
+    // A Map keeps insertion order, so remembered agents hold their place and
+    // live-only ones are appended; keep the most recent ROSTER_CAP.
+    const merged = [...byId.values()].slice(-ROSTER_CAP)
+    await update($, snapshot, () => ({ agents: merged, refreshedAt }))
+    // Pin the summary under the prompt (shows even when the pane is closed).
+    $.ui.status(statusLineText(merged))
   } catch {
     // keep the previous snapshot rather than blanking the pane
   }
