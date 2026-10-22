@@ -2,5 +2,8 @@
   "name": "agent-view",
   "version": "0.1.0",
   "description": "A live pane listing this session's subagents, forks and teammates with their status at a glance.",
+  "author": { "name": "r00tdr4g0n", "url": "https://github.com/r00tdr4g0n" },
+  "homepage": "https://github.com/r00tdr4g0n/agent-view",
+  "license": "MIT",
   "types": "./types/index.d.ts"
 }

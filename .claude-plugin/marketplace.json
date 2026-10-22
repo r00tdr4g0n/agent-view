@@ -1,5 +1,6 @@
 {
   "name": "wychoi-mods",
+  "description": "Mods by r00tdr4g0n for Claude Code.",
   "owner": { "name": "r00tdr4g0n" },
   "plugins": [
     {
