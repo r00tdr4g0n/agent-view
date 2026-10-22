@@ -37,10 +37,9 @@ test('pane draws header and empty state on each surface', async ($, on) => {
     const header = await ui.find({ type: 'Text', text: /total/ })
     expect(header).toBeDefined()
 
-    // The agent list is a Select (arrow-key navigable); the main-session entry
-    // is always present, so the Select renders even with no agents.
-    const select = await ui.find({ type: 'Select' })
-    expect(select).toBeDefined()
+    // The main-session row is always present as a pressable Button.
+    const mainRow = await ui.find({ type: 'Button' })
+    expect(mainRow).toBeDefined()
 
     // The status legend names the glyphs.
     const legend = await ui.find({ type: 'Text', text: /실행.*완료/ })

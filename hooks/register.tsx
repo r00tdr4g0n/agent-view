@@ -94,10 +94,15 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // Capture the session's title when SessionStart carries it (startup, resume,
-  // fork). A mid-session /rename is not seen here, so the pane falls back to the
-  // working-directory name when no title was captured.
+  // Capture the session's title. SessionStart carries it at startup/resume/fork;
+  // UserPromptSubmit carries the current title on every prompt, so a mid-session
+  // /rename is picked up on the next prompt. Both feed the same stored name.
   on('classic.SessionStart', async ($, e, next) => {
+    if (e.session_title) await update($, sessionName, () => e.session_title ?? '')
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
+  on('classic.UserPromptSubmit', async ($, e, next) => {
     if (e.session_title) await update($, sessionName, () => e.session_title ?? '')
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -125,10 +130,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const ui = $.ui.resolve(e)
-    const { Box, Text } = ui
-    // Select is absent on some surfaces (mobile); fall back to a static tree there.
-    const Select = 'Select' in ui ? ui.Select : undefined
+    const { Box, Text, Button } = $.ui.resolve(e)
     const snap = await read($, snapshot)
     const agents = snap.agents
 
@@ -208,18 +210,10 @@ export const register: Register = on => {
       return `${head}${tail}`
     }
 
-    // The selectable list: the main session first, then each agent with its tree
-    // prefix and status glyph. Arrow keys move the highlight; Enter opens the
-    // chosen agent's transcript (or returns to the main conversation).
+    // Each row is a Button, so the whole list stays visible (no collapsing) and
+    // a press opens that agent's transcript; the main-session row returns to the
+    // main conversation. $.ui.view is allowed because a press is the person's input.
     const MAIN_VALUE = '__main__'
-    const options = [
-      { value: MAIN_VALUE, label: `◆ ${rootLabel} (main)` },
-      ...shown.map(({ agent, prefix }) => ({
-        value: agent.id,
-        label: `${prefix}${STATUS_META[agent.status].glyph} ${label(agent)}`,
-      })),
-    ]
-    // onSelect runs on the person's pick, so $.ui.view is allowed here.
     const openSelected = (value: string): void => {
       void (value === MAIN_VALUE ? $.ui.view({}) : $.ui.view({ agentId: value }))
     }
@@ -228,28 +222,25 @@ export const register: Register = on => {
       <Box flexDirection="column" height={bodyRows}>
         {/* The agent tree grows from the top, filling the space above the bar. */}
         <Box flexDirection="column" flexGrow={1}>
-          {Select ? (
-            <Select key="agents" options={options} onSelect={openSelected} autoFocus />
-          ) : (
-            // Surfaces without Select (e.g. mobile) get a static, colored tree.
-            <Box flexDirection="column">
-              <Text bold color="claude">
-                {'◆'} {rootLabel}
-              </Text>
-              {shown.map(({ agent, prefix }) => {
-                const meta = STATUS_META[agent.status]
-                return (
-                  <Text>
-                    <Text dimColor>{prefix}</Text>
-                    <Text color={meta.color} dimColor={meta.dim}>
-                      {meta.glyph}
-                    </Text>{' '}
-                    {label(agent)}
-                  </Text>
-                )
-              })}
-            </Box>
-          )}
+          {/* Main-session row: always first, returns to the main conversation. */}
+          <Button key={MAIN_VALUE} plain onPress={() => openSelected(MAIN_VALUE)}>
+            <Text bold color="claude">
+              {'◆'} {rootLabel} (main)
+            </Text>
+          </Button>
+          {/* One always-visible Button per agent; the glyph alone carries color. */}
+          {shown.map(({ agent, prefix }) => {
+            const meta = STATUS_META[agent.status]
+            return (
+              <Button key={agent.id} plain onPress={() => openSelected(agent.id)}>
+                <Text dimColor>{prefix}</Text>
+                <Text color={meta.color} dimColor={meta.dim}>
+                  {meta.glyph}
+                </Text>{' '}
+                {label(agent)}
+              </Button>
+            )
+          })}
           {hidden > 0 && <Text dimColor>{`… +${hidden} more`}</Text>}
           {/* Icon counts, one per status group, placed below the tree. */}
           <Text>
