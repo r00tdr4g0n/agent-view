@@ -125,7 +125,10 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const ui = $.ui.resolve(e)
+    const { Box, Text } = ui
+    // Select is absent on some surfaces (mobile); fall back to a static tree there.
+    const Select = 'Select' in ui ? ui.Select : undefined
     const snap = await read($, snapshot)
     const agents = snap.agents
 
@@ -195,7 +198,8 @@ export const register: Register = on => {
     const room = Math.max(1, bodyRows - 4)
     // Rule spans the full pane body width (bodyColumns), adjusting as it resizes.
     const ruleWidth = Math.max(10, e.props?.bodyColumns ?? e.viewport?.columns ?? 28)
-    const shown = ordered.slice(0, room)
+    // Leave one row for the main-session entry at the top of the list.
+    const shown = ordered.slice(0, Math.max(1, room - 1))
     const hidden = ordered.length - shown.length
 
     const label = (a: AgentRow) => {
@@ -204,28 +208,48 @@ export const register: Register = on => {
       return `${head}${tail}`
     }
 
+    // The selectable list: the main session first, then each agent with its tree
+    // prefix and status glyph. Arrow keys move the highlight; Enter opens the
+    // chosen agent's transcript (or returns to the main conversation).
+    const MAIN_VALUE = '__main__'
+    const options = [
+      { value: MAIN_VALUE, label: `◆ ${rootLabel} (main)` },
+      ...shown.map(({ agent, prefix }) => ({
+        value: agent.id,
+        label: `${prefix}${STATUS_META[agent.status].glyph} ${label(agent)}`,
+      })),
+    ]
+    // onSelect runs on the person's pick, so $.ui.view is allowed here.
+    const openSelected = (value: string): void => {
+      void (value === MAIN_VALUE ? $.ui.view({}) : $.ui.view({ agentId: value }))
+    }
+
     return (
       <Box flexDirection="column" height={bodyRows}>
         {/* The agent tree grows from the top, filling the space above the bar. */}
         <Box flexDirection="column" flexGrow={1}>
-          <Text bold color="claude">
-            {'◆'} {rootLabel}
-          </Text>
-          {agents.length === 0 && <Text dimColor>{`${LAST}(no subagents or forks yet)`}</Text>}
-          {shown.map(({ agent, prefix }) => {
-            const meta = STATUS_META[agent.status]
-            // Only the glyph is colored by status; the tree lines stay dim and the
-            // name/description stay the default text color.
-            return (
-              <Text>
-                <Text dimColor>{prefix}</Text>
-                <Text color={meta.color} dimColor={meta.dim}>
-                  {meta.glyph}
-                </Text>{' '}
-                {label(agent)}
+          {Select ? (
+            <Select key="agents" options={options} onSelect={openSelected} autoFocus />
+          ) : (
+            // Surfaces without Select (e.g. mobile) get a static, colored tree.
+            <Box flexDirection="column">
+              <Text bold color="claude">
+                {'◆'} {rootLabel}
               </Text>
-            )
-          })}
+              {shown.map(({ agent, prefix }) => {
+                const meta = STATUS_META[agent.status]
+                return (
+                  <Text>
+                    <Text dimColor>{prefix}</Text>
+                    <Text color={meta.color} dimColor={meta.dim}>
+                      {meta.glyph}
+                    </Text>{' '}
+                    {label(agent)}
+                  </Text>
+                )
+              })}
+            </Box>
+          )}
           {hidden > 0 && <Text dimColor>{`… +${hidden} more`}</Text>}
           {/* Icon counts, one per status group, placed below the tree. */}
           <Text>
