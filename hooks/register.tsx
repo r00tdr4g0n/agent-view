@@ -18,6 +18,11 @@ const snapshot = atom({ plugin: 'agent-view', key: 'snapshot' } as const, {
 // pane falls back to the working-directory name.
 const sessionName = atom({ plugin: 'agent-view', key: 'sessionName' } as const, '')
 
+// The key of the row the focus ring sits on, captured from ui.focus. '' until
+// the person focuses the pane (ctrl+x tab); the render marks this row with an
+// accent caret so the selected item stands out beyond the terminal's invert.
+const focusedKey = atom({ plugin: 'agent-view', key: 'focusedKey' } as const, '')
+
 // How each status reads in the pane: a glyph and a theme color.
 const STATUS_META: Record<AgentRowStatus, { glyph: string; color: string; dim: boolean }> = {
   running: { glyph: '●', color: 'success', dim: false }, //  filled circle
@@ -129,10 +134,20 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e))
 
+  // Track which row holds the focus ring so the render can mark it. The ring
+  // exists only while the pane is focused; e.element is absent for the engine's
+  // own stops (the close mark), which clears our marker. Always pass the ring on.
+  on('ui.focus', { requestId: PANE }, async ($, e, next) => {
+    await update($, focusedKey, () => e.element ?? '')
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const snap = await read($, snapshot)
     const agents = snap.agents
+    // The row the focus ring is on, marked with an accent caret in the render.
+    const focused = await read($, focusedKey)
 
     // Root label: the captured session title, else the working-directory name,
     // else a neutral fallback. Never let a missing cwd blank the pane.
@@ -222,22 +237,27 @@ export const register: Register = on => {
       <Box flexDirection="column" height={bodyRows}>
         {/* The agent tree grows from the top, filling the space above the bar. */}
         <Box flexDirection="column" flexGrow={1}>
-          {/* Main-session row: always first, returns to the main conversation. */}
-          <Button key={MAIN_VALUE} plain onPress={() => openSelected(MAIN_VALUE)}>
+          {/* Main-session row: always first, returns to the main conversation.
+              autoFocus seats the ring here when the pane takes the keyboard, so
+              a selected item is always visible from the first focus. */}
+          <Button key={MAIN_VALUE} plain autoFocus onPress={() => openSelected(MAIN_VALUE)}>
             <Text bold color="claude">
+              {focused === MAIN_VALUE ? '▸ ' : '  '}
               {'◆'} {rootLabel} (main)
             </Text>
           </Button>
           {/* One always-visible Button per agent; the glyph alone carries color. */}
           {shown.map(({ agent, prefix }) => {
             const meta = STATUS_META[agent.status]
+            const isSelected = focused === agent.id
             return (
               <Button key={agent.id} plain onPress={() => openSelected(agent.id)}>
+                <Text bold color="claude">{isSelected ? '▸ ' : '  '}</Text>
                 <Text dimColor>{prefix}</Text>
                 <Text color={meta.color} dimColor={meta.dim}>
                   {meta.glyph}
                 </Text>{' '}
-                {label(agent)}
+                <Text bold={isSelected}>{label(agent)}</Text>
               </Button>
             )
           })}

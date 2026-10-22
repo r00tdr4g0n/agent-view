@@ -31,6 +31,9 @@ declare module 'claude-code' {
       snapshot: AgentSnapshot
       // The session's title, captured from SessionStart; '' until known.
       sessionName: string
+      // The key of the row that currently holds the pane's focus ring, captured
+      // from ui.focus; '' until the person focuses the pane. The render marks it.
+      focusedKey: string
     }
   }
 }
