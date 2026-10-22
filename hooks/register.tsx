@@ -6,6 +6,8 @@ import type { AgentRow, AgentRowStatus } from '../types'
 const PANE = 'agent-view'
 const COMMAND = 'agent-view'
 const REFRESH_MS = 2000
+// Sentinel value for the main-session row (not an agent id).
+const MAIN_VALUE = '__main__'
 
 // One atom holds the whole snapshot, so a refresh redraws the pane in one write.
 // The value type is taken from the PluginState contract keyed by this ref.
@@ -17,11 +19,6 @@ const snapshot = atom({ plugin: 'agent-view', key: 'snapshot' } as const, {
 // The session's title, captured from SessionStart; '' until known, then the
 // pane falls back to the working-directory name.
 const sessionName = atom({ plugin: 'agent-view', key: 'sessionName' } as const, '')
-
-// The key of the row the focus ring sits on, captured from ui.focus. '' until
-// the person focuses the pane (ctrl+x tab); the render marks this row with an
-// accent caret so the selected item stands out beyond the terminal's invert.
-const focusedKey = atom({ plugin: 'agent-view', key: 'focusedKey' } as const, '')
 
 // How each status reads in the pane: a glyph and a theme color.
 const STATUS_META: Record<AgentRowStatus, { glyph: string; color: string; dim: boolean }> = {
@@ -134,20 +131,15 @@ export const register: Register = on => {
     return result
   }).catch(($, e, next) => next(e))
 
-  // Track which row holds the focus ring so the render can mark it. The ring
-  // exists only while the pane is focused; e.element is absent for the engine's
-  // own stops (the close mark), which clears our marker. Always pass the ring on.
-  on('ui.focus', { requestId: PANE }, async ($, e, next) => {
-    await update($, focusedKey, () => e.element ?? '')
-    return next(e)
-  }).catch(($, e, next) => next(e))
-
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const snap = await read($, snapshot)
     const agents = snap.agents
-    // The row the focus ring is on, marked with an accent caret in the render.
-    const focused = await read($, focusedKey)
+    // The caret marks the row currently OPEN in the main view, not the focus ring:
+    // e.props.view.agentId is the agent whose transcript is on screen (absent = the
+    // main conversation). It stays put while the ring moves, and shifts only when a
+    // different row is actually opened. '' stands for the main-session row.
+    const viewedKey = e.props?.view?.agentId ?? MAIN_VALUE
 
     // Root label: the captured session title, else the working-directory name,
     // else a neutral fallback. Never let a missing cwd blank the pane.
@@ -228,7 +220,6 @@ export const register: Register = on => {
     // Each row is a Button, so the whole list stays visible (no collapsing) and
     // a press opens that agent's transcript; the main-session row returns to the
     // main conversation. $.ui.view is allowed because a press is the person's input.
-    const MAIN_VALUE = '__main__'
     const openSelected = (value: string): void => {
       void (value === MAIN_VALUE ? $.ui.view({}) : $.ui.view({ agentId: value }))
     }
@@ -242,14 +233,14 @@ export const register: Register = on => {
               a selected item is always visible from the first focus. */}
           <Button key={MAIN_VALUE} plain autoFocus onPress={() => openSelected(MAIN_VALUE)}>
             <Text bold color="claude">
-              {focused === MAIN_VALUE ? '▸ ' : '  '}
+              {viewedKey === MAIN_VALUE ? '▸ ' : '  '}
               {'◆'} {rootLabel} (main)
             </Text>
           </Button>
           {/* One always-visible Button per agent; the glyph alone carries color. */}
           {shown.map(({ agent, prefix }) => {
             const meta = STATUS_META[agent.status]
-            const isSelected = focused === agent.id
+            const isSelected = viewedKey === agent.id
             return (
               <Button key={agent.id} plain onPress={() => openSelected(agent.id)}>
                 <Text bold color="claude">{isSelected ? '▸ ' : '  '}</Text>
