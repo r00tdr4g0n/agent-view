@@ -1,0 +1,11 @@
+{
+  "name": "wychoi-mods",
+  "owner": { "name": "r00tdr4g0n" },
+  "plugins": [
+    {
+      "name": "agent-view",
+      "source": "./",
+      "description": "Live pane showing this session's subagents and forks as a status tree."
+    }
+  ]
+}

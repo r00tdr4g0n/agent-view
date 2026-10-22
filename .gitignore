@@ -1,0 +1,7 @@
+# Engine-generated type stubs and tsconfig (re-created on each plugin load).
+.claude-plugin/types/
+/tsconfig.json
+
+# Node / editor noise
+node_modules/
+*.log

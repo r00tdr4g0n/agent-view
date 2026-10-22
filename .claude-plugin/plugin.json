@@ -1,0 +1,6 @@
+{
+  "name": "agent-view",
+  "version": "0.1.0",
+  "description": "A live pane listing this session's subagents, forks and teammates with their status at a glance.",
+  "types": "./types/index.d.ts"
+}
