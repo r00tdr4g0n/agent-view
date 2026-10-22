@@ -234,7 +234,7 @@ export const register: Register = on => {
           <Button key={MAIN_VALUE} plain autoFocus onPress={() => openSelected(MAIN_VALUE)}>
             <Text bold color="claude">
               {viewedKey === MAIN_VALUE ? '▸ ' : '  '}
-              {'◆'} {rootLabel} (main)
+              {'◆'} {rootLabel}
             </Text>
           </Button>
           {/* One always-visible Button per agent; the glyph alone carries color. */}
