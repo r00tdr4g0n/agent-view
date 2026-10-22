@@ -9,15 +9,30 @@ moment an agent is spawned or a turn completes.
 
 ## What it shows
 
-- The session as the tree root (`◆ <session title>`), with every agent hung
-  beneath it by its parent so sub-spawned agents nest under their parent.
-- One line per agent: a status glyph (colored), then the agent's name and its
-  task description. The tree connectors (`├─ └─ │`) and the names stay the
-  default text color; only the glyph carries the status color.
-- A per-status count line and a status legend pinned to the bottom of the pane.
+- The session itself as the tree root (`◆ <session title>`), with every agent
+  hung beneath it by its parent, so sub-spawned agents nest under their parent.
+- One row per agent: the tree connector (`├─ └─ │`), a status glyph, the agent's
+  name, and its task description. Only the glyph carries the status color; the
+  connectors and names stay the default text color.
+- A caret (`▸`) marks the row whose transcript is currently open in the main
+  view. It stays put while you move the keyboard focus and shifts only when you
+  actually open a different row.
+- A per-status count line below the tree, and a status legend pinned to the
+  bottom edge of the pane.
 
 Status glyphs: `●` running · `◐` pending/waiting · `○` idle · `✓` completed ·
 `✗` failed/killed.
+
+## Opening an agent's transcript
+
+Each row is pressable. Selecting one puts that agent's transcript in the main
+view (the same switch the tasks list makes); selecting the root row returns to
+the main conversation.
+
+- Click a row, or
+- Give the pane the keyboard with `Ctrl+X` then `Tab`, move between rows with
+  `Tab`, press `Enter` to open the selected row, and `Esc` to return focus to
+  the prompt.
 
 ## Install
 
@@ -38,8 +53,9 @@ every session. Open the pane any time with:
   sessions are not enumerable through the mod API, so they are not listed.
 - Accumulation only remembers agents seen while the mod was running; agents
   that finished before the mod loaded cannot be recovered.
-- The session title is captured from `SessionStart`; a mid-session rename is
-  not seen, so the pane then falls back to the working-directory name.
+- The session title is captured from `SessionStart` and refreshed from every
+  `UserPromptSubmit`, so a mid-session rename shows on the next prompt. Until a
+  title is known, the root falls back to the working-directory name.
 
 ## Development
 
