@@ -225,9 +225,9 @@ export const register: Register = on => {
     }
 
     return (
-      <Box flexDirection="column" height={bodyRows}>
-        {/* The agent tree grows from the top, filling the space above the bar. */}
-        <Box flexDirection="column" flexGrow={1}>
+      <Box flexDirection="column">
+        {/* Content flows top to bottom and ends at the legend, no trailing gap. */}
+        <Box flexDirection="column">
           {/* Main-session row: always first, returns to the main conversation.
               autoFocus seats the ring here when the pane takes the keyboard, so
               a selected item is always visible from the first focus. */}
