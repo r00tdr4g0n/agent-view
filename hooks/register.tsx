@@ -225,8 +225,9 @@ export const register: Register = on => {
     }
 
     return (
-      <Box flexDirection="column">
-        {/* Content flows top to bottom and ends at the legend, no trailing gap. */}
+      <Box flexDirection="column" height={bodyRows} justifyContent="flex-end">
+        {/* Push the whole block to the bottom edge; any slack sits above the tree,
+            and the legend ends flush with the bottom with no gap below it. */}
         <Box flexDirection="column">
           {/* Main-session row: always first, returns to the main conversation.
               autoFocus seats the ring here when the pane takes the keyboard, so
