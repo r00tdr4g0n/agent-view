@@ -205,10 +205,8 @@ export const register: Register = on => {
     // the viewport. The status bar is 3 rows (rule + updated + legend); the header
     // and session root are 2 more; the rest is room for agent rows.
     const bodyRows = e.props?.scroll?.bodyRows ?? e.viewport?.rows ?? 24
-    // Status bar is 2 rows (rule + legend); session root + count line are 2 more.
-    const room = Math.max(1, bodyRows - 4)
-    // Rule spans the full pane body width (bodyColumns), adjusting as it resizes.
-    const ruleWidth = Math.max(10, e.props?.bodyColumns ?? e.viewport?.columns ?? 28)
+    // Status bar is 1 row (legend); session root + count line are 2 more.
+    const room = Math.max(1, bodyRows - 3)
     // Leave one row for the main-session entry at the top of the list.
     const shown = ordered.slice(0, Math.max(1, room - 1))
     const hidden = ordered.length - shown.length
@@ -280,9 +278,8 @@ export const register: Register = on => {
             <Text dimColor>{'·'} total {agents.length}</Text>
           </Text>
         </Box>
-        {/* Status bar pinned to the bottom edge of the pane. */}
+        {/* Legend pinned to the bottom edge of the pane. */}
         <Box flexDirection="column">
-          <Text dimColor>{'─'.repeat(ruleWidth)}</Text>
           <Text dimColor>{'● 실행  ◐ 대기  ○ 유휴  ✓ 완료  ✗ 종료'}</Text>
         </Box>
       </Box>
